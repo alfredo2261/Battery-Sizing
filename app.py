@@ -101,8 +101,6 @@ if load is not None:
     start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the beginning of the transformer load csv): ", value = 0)
     end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the end of the transformer load csv): ", value = -1)
     
-    st.write(load)
-    
     kw, kwh, output = batt_size(load, threshold, year, dod, rte, timestep)
     output_kw, output_kwh = charging_cycle(load, kw, kwh, threshold, timestep)
     
