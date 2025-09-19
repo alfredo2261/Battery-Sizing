@@ -89,39 +89,41 @@ def charging_cycle(load, kw, kwh, upper_threshold, timestep):
 st.title("CEP Energy Storage: Custom Battery Sizing")
 
 load = st.file_uploader("Upload the transformer load as a csv", type="csv")
-load = pd.read_csv(load, header=None, names=['Total load (kW)'])
-timestep = st.number_input("Enter the timestep of the transformer load (in minutes): ", value = 0)
-threshold = st.number_input("Enter the rated transformer capacity (in kW): ", value = 0)
-year = st.number_input("Enter the number of years the battery has degraded (from 0-15): ", value = 0)
-dod = st.number_input("Enter the depth of discharge (from 0-1): ", value = 0)
-rte = st.number_input("Enter the round-trip efficiency (from 0-1): ", value = 0)
 
-start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the beginning of the transformer load csv): ", value = 0)
-end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the end of the transformer load csv): ", value = -1)
-
-st.write(load)
-
-kw, kwh, output = batt_size(load, threshold, year, dod, rte, timestep)
-output_kw, output_kwh = charging_cycle(load, kw, kwh, threshold, timestep)
-
-st.subheader("Suggested battery size")
-st.write(output)
-
-st.subheader("Battery Charging/Discharging Profile")
-existing_load_new = [i[0] for i in load.values[start:end]]
-
-fig, ax = plt.subplots()
-
-ax.plot(output_kw[start:end], label = "Battery")
-ax.plot(load.values[start:end], label = "Transformer Load")
-ax.plot(np.subtract(existing_load_new, output_kw[start:end]), label = "Net Load")
-# ax.plot([threshold]*len(load), '--', label = "")
-# ax.plot([threshold - kw]*len(load), '--', label = "")
-# ax.plot([kw]*len(load), '--', label = "")
-# ax.plot([-kw]*len(load), '--', label = "")
-
-ax.set_xlabel("Hour")
-ax.set_ylabel("Load (kW)")
-ax.legend()
-
-st.pyplot(fig)
+if load is not None:
+    load = pd.read_csv(load, header=None, names=['Total load (kW)'])
+    timestep = st.number_input("Enter the timestep of the transformer load (in minutes): ", value = 0)
+    threshold = st.number_input("Enter the rated transformer capacity (in kW): ", value = 0)
+    year = st.number_input("Enter the number of years the battery has degraded (from 0-15): ", value = 0)
+    dod = st.number_input("Enter the depth of discharge (from 0-1): ", value = 0)
+    rte = st.number_input("Enter the round-trip efficiency (from 0-1): ", value = 0)
+    
+    start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the beginning of the transformer load csv): ", value = 0)
+    end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the end of the transformer load csv): ", value = -1)
+    
+    st.write(load)
+    
+    kw, kwh, output = batt_size(load, threshold, year, dod, rte, timestep)
+    output_kw, output_kwh = charging_cycle(load, kw, kwh, threshold, timestep)
+    
+    st.subheader("Suggested battery size")
+    st.write(output)
+    
+    st.subheader("Battery Charging/Discharging Profile")
+    existing_load_new = [i[0] for i in load.values[start:end]]
+    
+    fig, ax = plt.subplots()
+    
+    ax.plot(output_kw[start:end], label = "Battery")
+    ax.plot(load.values[start:end], label = "Transformer Load")
+    ax.plot(np.subtract(existing_load_new, output_kw[start:end]), label = "Net Load")
+    # ax.plot([threshold]*len(load), '--', label = "")
+    # ax.plot([threshold - kw]*len(load), '--', label = "")
+    # ax.plot([kw]*len(load), '--', label = "")
+    # ax.plot([-kw]*len(load), '--', label = "")
+    
+    ax.set_xlabel("Hour")
+    ax.set_ylabel("Load (kW)")
+    ax.legend()
+    
+    st.pyplot(fig)
