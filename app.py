@@ -92,14 +92,14 @@ load = st.file_uploader("Upload the transformer load as a csv", type="csv")
 
 if load is not None:
     load = pd.read_csv(load, header=None, names=['Total load (kW)'])
-    timestep = st.number_input("Enter the timestep of the transformer load (in minutes): ", value = 0)
-    threshold = st.number_input("Enter the rated transformer capacity (in kW): ", value = 0)
-    year = st.number_input("Enter the number of years the battery has degraded (from 0-15): ", value = 0)
-    dod = st.number_input("Enter the depth of discharge (from 0-1): ", value = 0)
-    rte = st.number_input("Enter the round-trip efficiency (from 0-1): ", value = 0)
+    timestep = st.number_input("Enter the time interval of the transformer load (in minutes): ", value = 0)
+    threshold = st.number_input("Enter the transformer normal thermal rating (in kVa): ", value = 0)
+    year = st.number_input("Enter the number of years the battery will be in service (from 0-15): ", value = 0)
+    dod = st.number_input("Enter the depth of discharge of the battery (from 0-1): ", value = 0)
+    rte = st.number_input("Enter the round-trip efficiency of the battery (from 0-1): ", value = 0)
     
-    start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the beginning of the transformer load csv): ", value = 0)
-    end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the end of the transformer load csv): ", value = -1)
+    start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the first time interval of your load csv): ", value = 0)
+    end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the last time interval of your load csv): ", value = -1)
     
     kw, kwh, output = batt_size(load, threshold, year, dod, rte, timestep)
     output_kw, output_kwh = charging_cycle(load, kw, kwh, threshold, timestep, rte)
