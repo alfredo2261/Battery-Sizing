@@ -50,7 +50,7 @@ def batt_size(load, max_allowable_load, year, dod, rte, timestep):
     return required_power, required_energy, output
 
 
-def charging_cycle(load, kw, kwh, upper_threshold, timestep):
+def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
     lower_threshold = upper_threshold - kw
     battery_remaining_life = kwh
     battery_kw = []
@@ -60,7 +60,7 @@ def charging_cycle(load, kw, kwh, upper_threshold, timestep):
         upper_difference = i[0] - upper_threshold
         lower_difference = i[0] - lower_threshold
         if upper_difference > 0: #discharging
-            upper_difference = min(upper_difference, kw) # go through math/units, change to new variable
+            upper_difference = min(upper_difference, kw)*rte # go through math/units, change to new variable
             battery_remaining_life -= upper_difference*(timestep/60)
             if battery_remaining_life > 0:
                 battery_kw.append(upper_difference)
@@ -102,7 +102,7 @@ if load is not None:
     end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the end of the transformer load csv): ", value = -1)
     
     kw, kwh, output = batt_size(load, threshold, year, dod, rte, timestep)
-    output_kw, output_kwh = charging_cycle(load, kw, kwh, threshold, timestep)
+    output_kw, output_kwh = charging_cycle(load, kw, kwh, threshold, timestep, rte)
     
     st.subheader("Suggested battery size")
     st.write(output)
