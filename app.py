@@ -95,8 +95,8 @@ if load is not None:
     timestep = st.number_input("Enter the time interval of the transformer load (in minutes): ", value = 0)
     threshold = st.number_input("Enter the transformer normal thermal rating (in kVa): ", value = 0)
     year = st.number_input("Enter the number of years the battery will be in service (from 0-15): ", value = 0)
-    dod = st.number_input("Enter the depth of discharge of the battery (from 0-1): ", value = 0)
-    rte = st.number_input("Enter the round-trip efficiency of the battery (from 0-1): ", value = 0)
+    dod = st.number_input("Enter the depth of discharge of the battery (from 0-1): ", value = 0.0, step=0.1)
+    rte = st.number_input("Enter the round-trip efficiency of the battery (from 0-1): ", value = 0.0, step=0.1)
     
     start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the first time interval of your load csv): ", value = 0)
     end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the last time interval of your load csv): ", value = -1)
