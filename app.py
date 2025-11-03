@@ -125,6 +125,11 @@ if load is not None:
     ax.legend()
     
     st.pyplot(fig)
+
+    print(output_kw)
+    print(load.values)
+    print(np.subtract(existing_load_new, output_kw[start:end]))
+    
     data = {
         'Battery':output_kw,
         'Transformer Load':load.values,
