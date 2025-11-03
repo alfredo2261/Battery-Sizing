@@ -135,10 +135,10 @@ if load is not None:
         'Transformer Load':load.values,
         'Net Load':np.subtract(existing_load_new, output_kw[start:end])
     }
-    csv_data = data.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label = 'Download data as CSV',
-        data = csv_data,
-        file_name = 'charging_discharging_profile.csv',
-        mime = 'text/csv'
-    )
+    # csv_data = data.to_csv(index=False).encode('utf-8')
+    # st.download_button(
+    #     label = 'Download data as CSV',
+    #     data = csv_data,
+    #     file_name = 'charging_discharging_profile.csv',
+    #     mime = 'text/csv'
+    # )
