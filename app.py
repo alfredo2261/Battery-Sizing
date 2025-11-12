@@ -110,7 +110,7 @@ def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
     return battery_kw, battery_kwh
 
 
-st.title("CEP Energy Storage: Custom Battery Sizing")
+st.title("Sizeable: BESS solutions made easy")
 
 load = st.file_uploader("Upload the transformer load as a csv", type="csv")
 
@@ -118,7 +118,7 @@ if load is not None:
     load = pd.read_csv(load, header=None, names=['Total load (kW)'])
     timestep = st.number_input("Enter the time interval of the transformer load (in minutes): ", value = 0)
     threshold = st.number_input("Enter the transformer normal thermal rating (in kVa): ", value = 0)
-    year = st.number_input("Enter the number of years the battery will be in service (from 0-15): ", value = 0)
+    year = st.number_input("Enter the number of years the traditional solution will be deferred (from 0-15): ", value = 0)
     dod = st.number_input("Enter the depth of discharge of the battery (from 0-1): ", value = 0.0, step=0.1)
     rte = st.number_input("Enter the round-trip efficiency of the battery (from 0-1): ", value = 0.0, step=0.1)
     
