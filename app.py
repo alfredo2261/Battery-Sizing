@@ -156,7 +156,7 @@ if load is not None:
     
     data = {
         'Battery':np.array(output_kw),
-        'Transformer Load':load.values,
+        'Transformer Load':load.values.ravel(),
         'Net Load':np.subtract(existing_load_new, output_kw[start:end]).ravel()
     }
 
