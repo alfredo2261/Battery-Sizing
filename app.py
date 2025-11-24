@@ -155,9 +155,9 @@ if load is not None:
     # st.write(np.subtract(existing_load_new, output_kw[start:end]))
     
     data = {
-        'Battery':output_kw,
+        'Battery':np.array(output_kw),
         'Transformer Load':load.values,
-        'Net Load':np.subtract(existing_load_new, output_kw[start:end])
+        'Net Load':np.subtract(existing_load_new, output_kw[start:end]).ravel()
     }
 
     st.write(data)
