@@ -115,7 +115,10 @@ st.title("BESS-SP: Battery Energy Storage System Sizing Planner")
 load = st.file_uploader("Upload the transformer load as a csv", type="csv")
 
 if load is not None:
-    load = pd.read_csv(load, header=None, names=['Total load (kW)'])
+    load = pd.read_csv(load, header=None, names=['Date', 'Total load (kW)'])
+    load = load['Total load (kW)']
+    date = pd.to_datetime(load['Date'])
+    
     timestep = st.number_input("Enter the time interval of the transformer load (in minutes): ", value = 0)
     threshold = st.number_input("Enter the transformer normal thermal rating (in kVa): ", value = 0)
     year = st.number_input("Enter the number of years the traditional solution will be deferred (from 0-15): ", value = 0)
@@ -136,9 +139,9 @@ if load is not None:
     
     fig, ax = plt.subplots()
     
-    ax.plot(output_kw[start:end], label = "Battery")
-    ax.plot(load.values[start:end], label = "Transformer Load")
-    ax.plot(np.subtract(existing_load_new, output_kw), label = "Net Load")
+    ax.plot(date, output_kw[start:end], label = "Battery")
+    ax.plot(date, load.values[start:end], label = "Transformer Load")
+    ax.plot(date, np.subtract(existing_load_new, output_kw), label = "Net Load")
     # ax.plot([threshold]*len(load), '--', label = "")
     # ax.plot([threshold - kw]*len(load), '--', label = "")
     # ax.plot([kw]*len(load), '--', label = "")
@@ -151,6 +154,7 @@ if load is not None:
     st.pyplot(fig)
     
     data = pd.DataFrame({
+        'Date':date,
         'Battery':np.array(output_kw),
         'Transformer Load':load.values.ravel(),
         'Net Load':np.subtract(existing_load_new, output_kw).ravel()
