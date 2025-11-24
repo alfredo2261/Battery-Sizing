@@ -134,10 +134,9 @@ if load is not None:
     
     st.subheader("Suggested battery size")
     st.markdown(
-        f"<p style='text-align: center; font-weight: bold; font-size: 28px;'>{output}</p>",
+        f"<p style='text-align: center; font-size: 28px;'>{output}</p>",
         unsafe_allow_html=True
     )
-    #st.write(output)
     
     st.subheader("Battery Charging/Discharging Profile")
     #existing_load_new = [i[0] for i in total_load.values]
