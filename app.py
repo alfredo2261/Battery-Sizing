@@ -154,12 +154,12 @@ if load is not None:
 
     st.write(len(output_kw))
     st.write(len(load.values))
-    st.write(len(np.subtract(existing_load_new, output_kw[start:end])))
+    st.write(len(np.subtract(existing_load_new, output_kw)))
     
     data = pd.DataFrame({
         'Battery':np.array(output_kw),
         'Transformer Load':load.values.ravel(),
-        'Net Load':np.subtract(existing_load_new, output_kw[start:end]).ravel()
+        'Net Load':np.subtract(existing_load_new, output_kw).ravel()
     })
     
     st.dataframe(data)
