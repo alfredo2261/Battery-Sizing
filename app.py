@@ -133,6 +133,8 @@ if load is not None:
     
     st.subheader("Battery Charging/Discharging Profile")
     existing_load_new = [i[0] for i in load.values[start:end]]
+
+    st.write(len(existing_load_new))
     
     fig, ax = plt.subplots()
     
