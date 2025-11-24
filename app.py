@@ -154,32 +154,20 @@ if load is not None:
     # st.write(load.values)
     # st.write(np.subtract(existing_load_new, output_kw[start:end]))
     
-    data = pd.DataFrame({
-        'Battery':np.array(output_kw),
-        'Transformer Load':load.values.ravel(),
-        'Net Load':np.subtract(existing_load_new, output_kw[start:end]).ravel()
-    })
+    # data = pd.DataFrame({
+    #     'Battery':np.array(output_kw),
+    #     'Transformer Load':load.values.ravel(),
+    #     'Net Load':np.subtract(existing_load_new, output_kw[start:end]).ravel()
+    # })
     
-    # Display in app
-    st.dataframe(data)
+    # st.dataframe(data)
     
-    # Convert to CSV
-    csv = data.to_csv(index=False).encode("utf-8")
+    # csv = data.to_csv(index=False).encode("utf-8")
     
-    # Download button
-    st.download_button(
-        "Download CSV",
-        csv,
-        "charging_discharging_profile.csv",
-        "text/csv"
-    )
-
-
-    # #st.write(data)
-    # csv_data = data.to_csv(index=False).encode('utf-8')
     # st.download_button(
-    #     label = 'Download data as CSV',
-    #     data = csv_data,
-    #     file_name = 'charging_discharging_profile.csv',
-    #     mime = 'text/csv'
+    #     "Download CSV",
+    #     csv,
+    #     "charging_discharging_profile.csv",
+    #     "text/csv"
     # )
+
