@@ -133,8 +133,6 @@ if load is not None:
     
     st.subheader("Battery Charging/Discharging Profile")
     existing_load_new = [i[0] for i in load.values]
-
-    st.write(len(existing_load_new))
     
     fig, ax = plt.subplots()
     
@@ -151,10 +149,6 @@ if load is not None:
     ax.legend()
     
     st.pyplot(fig)
-
-    st.write(len(output_kw))
-    st.write(len(load.values))
-    st.write(len(np.subtract(existing_load_new, output_kw)))
     
     data = pd.DataFrame({
         'Battery':np.array(output_kw),
@@ -167,7 +161,7 @@ if load is not None:
     csv = data.to_csv(index=False).encode("utf-8")
     
     st.download_button(
-        "Download CSV",
+        "Download Charging/Discharging Profile as CSV",
         csv,
         "charging_discharging_profile.csv",
         "text/csv"
