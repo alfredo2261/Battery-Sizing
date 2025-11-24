@@ -139,8 +139,8 @@ if load is not None:
     
     fig, ax = plt.subplots()
     
-    ax.plot(date, output_kw[start:end], label = "Battery")
-    ax.plot(date, total_load.values[start:end], label = "Transformer Load")
+    ax.plot(date, output_kw, label = "Battery")
+    ax.plot(date, total_load.values, label = "Transformer Load")
     ax.plot(date, np.subtract(total_load, output_kw), label = "Net Load")
     # ax.plot([threshold]*len(load), '--', label = "")
     # ax.plot([threshold - kw]*len(load), '--', label = "")
