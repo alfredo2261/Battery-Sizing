@@ -150,9 +150,9 @@ if load is not None:
     
     st.pyplot(fig)
 
-    st.write(output_kw)
-    st.write(load.values)
-    st.write(np.subtract(existing_load_new, output_kw[start:end]))
+    st.write(len(output_kw))
+    st.write(len(load.values))
+    st.write(len(np.subtract(existing_load_new, output_kw[start:end])))
     
     data = pd.DataFrame({
         'Battery':np.array(output_kw),
