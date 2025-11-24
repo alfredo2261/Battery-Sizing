@@ -140,7 +140,7 @@ if load is not None:
     
     ax.plot(output_kw[start:end], label = "Battery")
     ax.plot(load.values[start:end], label = "Transformer Load")
-    ax.plot(np.subtract(existing_load_new, output_kw[start:end]), label = "Net Load")
+    ax.plot(np.subtract(existing_load_new, output_kw), label = "Net Load")
     # ax.plot([threshold]*len(load), '--', label = "")
     # ax.plot([threshold - kw]*len(load), '--', label = "")
     # ax.plot([kw]*len(load), '--', label = "")
