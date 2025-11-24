@@ -116,8 +116,7 @@ load = st.file_uploader("Upload the transformer load as a csv", type="csv")
 
 if load is not None:
     load = pd.read_csv(load, header=None, names=['Date', 'Total load (kW)'])
-    st.write(load['Date'])
-    load = load['Total load (kW)']
+    total_load = load['Total load (kW)']
     date = pd.to_datetime(load['Date'])
     
     timestep = st.number_input("Enter the time interval of the transformer load (in minutes): ", value = 0)
@@ -129,19 +128,19 @@ if load is not None:
     start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the first time interval of your load csv): ", value = 0)
     end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the last time interval of your load csv): ", value = -1)
     
-    kw, kwh, output = batt_size(load, threshold, year, dod, rte, timestep)
-    output_kw, output_kwh = charging_cycle(load, kw, kwh, threshold, timestep, rte)
+    kw, kwh, output = batt_size(total_load, threshold, year, dod, rte, timestep)
+    output_kw, output_kwh = charging_cycle(total_load, kw, kwh, threshold, timestep, rte)
     
     st.subheader("Suggested battery size")
     st.write(output)
     
     st.subheader("Battery Charging/Discharging Profile")
-    existing_load_new = [i[0] for i in load.values]
+    existing_load_new = [i[0] for i in total_load.values]
     
     fig, ax = plt.subplots()
     
     ax.plot(date, output_kw[start:end], label = "Battery")
-    ax.plot(date, load.values[start:end], label = "Transformer Load")
+    ax.plot(date, total_load.values[start:end], label = "Transformer Load")
     ax.plot(date, np.subtract(existing_load_new, output_kw), label = "Net Load")
     # ax.plot([threshold]*len(load), '--', label = "")
     # ax.plot([threshold - kw]*len(load), '--', label = "")
@@ -157,7 +156,7 @@ if load is not None:
     data = pd.DataFrame({
         'Date':date,
         'Battery':np.array(output_kw),
-        'Transformer Load':load.values.ravel(),
+        'Transformer Load':total_load.values.ravel(),
         'Net Load':np.subtract(existing_load_new, output_kw).ravel()
     })
     
