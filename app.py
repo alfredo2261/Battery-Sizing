@@ -149,6 +149,7 @@ if load is not None:
     
     ax.set_xlabel("Hour")
     ax.set_ylabel("Load (kW)")
+    ax.tick_params(axis='x', labelrotation=45)
     ax.legend()
     
     st.pyplot(fig)
