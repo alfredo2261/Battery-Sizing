@@ -132,7 +132,7 @@ if load is not None:
     st.write(output)
     
     st.subheader("Battery Charging/Discharging Profile")
-    existing_load_new = [i[0] for i in load.values[start:end]]
+    existing_load_new = [i[0] for i in load.values]
 
     st.write(len(existing_load_new))
     
