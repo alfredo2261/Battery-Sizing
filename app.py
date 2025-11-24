@@ -145,16 +145,15 @@ if load is not None:
     ax.plot(date, output_kw, label = "Battery")
     ax.plot(date, total_load.values, label = "Transformer Load")
     ax.plot(date, np.subtract(total_load, output_kw), label = "Net Load")
+    
     # ax.plot([threshold]*len(load), '--', label = "")
     # ax.plot([threshold - kw]*len(load), '--', label = "")
     # ax.plot([kw]*len(load), '--', label = "")
     # ax.plot([-kw]*len(load), '--', label = "")
 
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %H:%M'))
-    
-    ax.set_xlabel("Hour")
+    ax.set_xlabel("Date")
     ax.set_ylabel("Load (kW)")
-    
     ax.tick_params(axis='x', labelrotation=45)
     ax.legend()
     
