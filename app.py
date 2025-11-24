@@ -135,13 +135,13 @@ if load is not None:
     st.write(output)
     
     st.subheader("Battery Charging/Discharging Profile")
-    existing_load_new = [i[0] for i in total_load.values]
+    #existing_load_new = [i[0] for i in total_load.values]
     
     fig, ax = plt.subplots()
     
     ax.plot(date, output_kw[start:end], label = "Battery")
     ax.plot(date, total_load.values[start:end], label = "Transformer Load")
-    ax.plot(date, np.subtract(existing_load_new, output_kw), label = "Net Load")
+    ax.plot(date, np.subtract(total_load, output_kw), label = "Net Load")
     # ax.plot([threshold]*len(load), '--', label = "")
     # ax.plot([threshold - kw]*len(load), '--', label = "")
     # ax.plot([kw]*len(load), '--', label = "")
@@ -157,7 +157,7 @@ if load is not None:
         'Date':date,
         'Battery':np.array(output_kw),
         'Transformer Load':total_load.values.ravel(),
-        'Net Load':np.subtract(existing_load_new, output_kw).ravel()
+        'Net Load':np.subtract(total_load, output_kw).ravel()
     })
     
     st.dataframe(data)
