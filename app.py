@@ -116,7 +116,7 @@ load = st.file_uploader("Upload the transformer load as a csv", type="csv")
 
 if load is not None:
     load = pd.read_csv(load, header=None, names=['Date', 'Total load (kW)'])
-    st.write(load)
+    st.write(load['Date'])
     load = load['Total load (kW)']
     date = pd.to_datetime(load['Date'])
     
