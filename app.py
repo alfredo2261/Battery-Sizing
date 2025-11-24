@@ -110,7 +110,7 @@ def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
     return battery_kw, battery_kwh
 
 
-st.title("Sizeable: BESS solutions made easy")
+st.title("BESS-SP: Battery Energy Storage System Sizing Planner")
 
 load = st.file_uploader("Upload the transformer load as a csv", type="csv")
 
@@ -150,15 +150,17 @@ if load is not None:
     
     st.pyplot(fig)
 
-    st.write(output_kw)
-    st.write(load.values)
-    st.write(np.subtract(existing_load_new, output_kw[start:end]))
+    # st.write(output_kw)
+    # st.write(load.values)
+    # st.write(np.subtract(existing_load_new, output_kw[start:end]))
     
     data = {
         'Battery':output_kw,
         'Transformer Load':load.values,
         'Net Load':np.subtract(existing_load_new, output_kw[start:end])
     }
+
+    st.write(data)
     # csv_data = data.to_csv(index=False).encode('utf-8')
     # st.download_button(
     #     label = 'Download data as CSV',
