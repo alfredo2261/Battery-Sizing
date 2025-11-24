@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 def degradation_profile(year):
     health = [
@@ -125,8 +126,8 @@ if load is not None:
     dod = st.number_input("Enter the depth of discharge of the battery (from 0-1): ", value = 0.0, step=0.1)
     rte = st.number_input("Enter the round-trip efficiency of the battery (from 0-1): ", value = 0.0, step=0.1)
     
-    start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the first time interval of your load csv): ", value = 0)
-    end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the last time interval of your load csv): ", value = -1)
+    #start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the first time interval of your load csv): ", value = 0)
+    #end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the last time interval of your load csv): ", value = -1)
     
     kw, kwh, output = batt_size(total_load, threshold, year, dod, rte, timestep)
     output_kw, output_kwh = charging_cycle(total_load, kw, kwh, threshold, timestep, rte)
@@ -148,9 +149,12 @@ if load is not None:
     # ax.plot([threshold - kw]*len(load), '--', label = "")
     # ax.plot([kw]*len(load), '--', label = "")
     # ax.plot([-kw]*len(load), '--', label = "")
+
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %H:%M'))
     
     ax.set_xlabel("Hour")
     ax.set_ylabel("Load (kW)")
+    
     ax.tick_params(axis='x', labelrotation=45)
     ax.legend()
     
