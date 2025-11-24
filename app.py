@@ -113,6 +113,7 @@ def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
 st.title("BESS-SP: Battery Energy Storage System Sizing Planner")
 
 load = st.file_uploader("Upload the transformer load as a csv", type="csv")
+st.write(load)
 
 if load is not None:
     load = pd.read_csv(load, header=None, names=['Date', 'Total load (kW)'])
