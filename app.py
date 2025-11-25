@@ -142,8 +142,6 @@ if load is not None:
     #existing_load_new = [i[0] for i in total_load.values]
     
     fig, ax = plt.subplots()
-
-    st.write(date)
     
     ax.plot(date, output_kw, label = "Battery")
     ax.plot(date, total_load.values, label = "Transformer Load")
