@@ -111,7 +111,7 @@ def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
         upper_difference = i - upper_threshold
         lower_difference = i - lower_threshold
         if upper_difference > 0: #discharging
-            upper_difference = min(upper_difference, kw)*rte # go through math/units, change to new variable
+            upper_difference = min(upper_difference, kw)#*rte # go through math/units, change to new variable
             battery_remaining_life -= upper_difference*(timestep/60)
             if battery_remaining_life > 0:
                 battery_kw.append(upper_difference)
