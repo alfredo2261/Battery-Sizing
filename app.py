@@ -25,31 +25,31 @@ import matplotlib.dates as mdates
 #     ]
 #     return health[year]
 
-def degradation_profile(year):
-    health = [
-        97.6,
-        96.22,
-        94.84,
-        93.46,
-        92.08,
-        90.7,
-        89.32,
-        87.94,
-        86.56,
-        85.18,
-        83.8,
-        82.42,
-        81.04,
-        79.66,
-        78.28,
-        76.9,
-        75.52,
-        74.14,
-        72.76,
-        71.38,
-        70
-    ]
-    return health[year]
+# def degradation_profile(year):
+#     health = [
+#         97.6,
+#         96.22,
+#         94.84,
+#         93.46,
+#         92.08,
+#         90.7,
+#         89.32,
+#         87.94,
+#         86.56,
+#         85.18,
+#         83.8,
+#         82.42,
+#         81.04,
+#         79.66,
+#         78.28,
+#         76.9,
+#         75.52,
+#         74.14,
+#         72.76,
+#         71.38,
+#         70
+#     ]
+#     return health[year]
 
 # def degradation_profile(year):
 #     health = [
@@ -88,7 +88,7 @@ def batt_size(load, max_allowable_load, year, dod, rte, timestep):
         sums.append(np.sum(i.values))
 
     required_power = np.max(battery_need)
-    required_power = required_power/degradation/dod
+    required_power = required_power/dod
     
     required_energy = np.max(sums)*timestep
     required_energy = required_energy/degradation/dod/rte
@@ -121,7 +121,7 @@ def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
                 battery_kwh.append(0)
                 battery_remaining_life = 0
         elif lower_difference <= 0: #charging
-            lower_difference = max(lower_difference, -kw)
+            lower_difference = max(lower_difference, -kw)/rte
             battery_remaining_life -= lower_difference*(timestep/60)
             if battery_remaining_life > 0 and battery_remaining_life <= kwh:
                 battery_kw.append(lower_difference)
