@@ -73,32 +73,32 @@ import matplotlib.dates as mdates
 #     ]
 #     return health[year]
 
-def degradation_profile(year):
-    health = [
-        100,
-        100*.99,
-        100*.99**2,
-        100*.99**3,
-        100*.99**4,
-        100*.99**5,
-        100*.99**6,
-        100*.99**7,
-        100*.99**8,
-        100*.99**9,
-        100*.99**10,
-        100*.99**11,
-        100*.99**12,
-        100*.99**13,
-        100*.99**14,
-        100*.99**15,
-        100*.99**16,
-        100*.99**17,
-        100*.99**18,
-        100*.99**19,
-        100*.99**20,
-        100*.99**21,
-    ]
-    return health[year]
+# def degradation_profile(year):
+#     health = [
+#         100,
+#         100*.99,
+#         100*.99**2,
+#         100*.99**3,
+#         100*.99**4,
+#         100*.99**5,
+#         100*.99**6,
+#         100*.99**7,
+#         100*.99**8,
+#         100*.99**9,
+#         100*.99**10,
+#         100*.99**11,
+#         100*.99**12,
+#         100*.99**13,
+#         100*.99**14,
+#         100*.99**15,
+#         100*.99**16,
+#         100*.99**17,
+#         100*.99**18,
+#         100*.99**19,
+#         100*.99**20,
+#         100*.99**21,
+#     ]
+#     return health[year]
 
 
 def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, degradation):
@@ -108,8 +108,8 @@ def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, d
     battery_need = load - max_allowable_load
     
     battery_need = battery_need.clip(lower=0)
-    degradation = degradation_profile(year)/100
-    #degradation = (1-degradation)**year
+    #degradation = degradation_profile(year)/100
+    degradation = (1-degradation)**year
     
     dfs = [battery_need for _, battery_need in battery_need.groupby((battery_need == 0).cumsum())]
     
