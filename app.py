@@ -109,7 +109,7 @@ def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, d
     
     battery_need = battery_need.clip(lower=0)
     #degradation = degradation_profile(year)/100
-    degradation = 100*(1-degradation)**year
+    degradation = (1-degradation)**year
     
     dfs = [battery_need for _, battery_need in battery_need.groupby((battery_need == 0).cumsum())]
     
