@@ -101,13 +101,15 @@ def degradation_profile(year):
 #     return health[year]
 
 
-def batt_size(load, max_allowable_load, year, dod, rte, timestep):
+def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, degradation):
+    load = load*(1+growth_rate)**year
     timestep = timestep / 60
     
     battery_need = load - max_allowable_load
     
     battery_need = battery_need.clip(lower=0)
-    degradation = degradation_profile(year)/100
+    #degradation = degradation_profile(year)/100
+    degradation = 100*(1-degradation)**year
     
     dfs = [battery_need for _, battery_need in battery_need.groupby((battery_need == 0).cumsum())]
     
@@ -177,13 +179,15 @@ if load is not None:
     timestep = st.number_input("Enter the time interval of the transformer load (in minutes): ", value = 0)
     threshold = st.number_input("Enter the transformer normal thermal rating (in kVa): ", value = 0)
     year = st.number_input("Enter the number of years the traditional solution will be deferred (from 0-15): ", value = 0)
+    growth_rate = st.number_input("Enter the annual load growth rate (from 0-1): ", value = 0.0, step=0.1)
+    degradation = st.number_input("Enter the annual degradation rate (from 0-1): ", value = 0.0, step=0.1)
     dod = st.number_input("Enter the depth of discharge of the battery (from 0-1): ", value = 0.0, step=0.1)
     rte = st.number_input("Enter the round-trip efficiency of the battery (from 0-1): ", value = 0.0, step=0.1)
     
     #start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the first time interval of your load csv): ", value = 0)
     #end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the last time interval of your load csv): ", value = -1)
     
-    kw, kwh, output = batt_size(total_load, threshold, year, dod, rte, timestep)
+    kw, kwh, output = batt_size(total_load, threshold, year, dod, rte, timestep, growth_rate, degradation)
     output_kw, output_kwh = charging_cycle(total_load, kw, kwh, threshold, timestep, rte)
     
     st.subheader("Suggested battery size")
