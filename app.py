@@ -118,7 +118,6 @@ def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, d
         sums.append(np.sum(i.values))
 
     required_power = np.max(battery_need)
-    required_power = required_power/dod
     
     required_energy = np.max(sums)*timestep
     required_energy = required_energy/degradation/dod/rte
