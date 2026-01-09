@@ -174,7 +174,7 @@ if load is not None:
     load = pd.read_csv(load, header=None, names=['Date', 'Total load (kW)'])
     total_load = load['Total load (kW)']
     date = pd.to_datetime(load['Date'])
-    timestep = st.number_input("Enter the time interval of the transformer load (in minutes): ", value = 0)
+    timestep = st.number_input("Enter the time granularity of the uploaded load data (in minutes): ", value = 0)
     threshold = st.number_input("Enter the transformer normal thermal rating (in kW): ", value = 0)
     year = st.number_input("Enter the number of years the traditional solution will be deferred (from 0-15): ", value = 0)
     growth_rate = st.number_input("Enter the annual load growth rate (from 0-1): ", min_value = 0.0, max_value = 1.0, step=0.001, format="%.3f")
