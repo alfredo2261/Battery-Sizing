@@ -179,7 +179,7 @@ def charging_cycle(load, kw, kwh, upper_threshold, timestep_min, rte):
 
     # Split round-trip efficiency into charge and discharge legs.
     # If you prefer a different split, set these explicitly.
-    if rte <= 0 or rte > 1:
+    if rte < 0 or rte > 1:
         raise ValueError("rte must be in (0, 1].")
     eta_c = math.sqrt(rte)   # charge efficiency
     eta_d = math.sqrt(rte)   # discharge efficiency
