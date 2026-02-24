@@ -167,67 +167,55 @@ def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, d
 
 
 def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
-    import math  # allowed inside function; no new variables created outside
+    import math
 
-    lower_threshold = upper_threshold - kw
     battery_remaining_life = kwh
     battery_kw = []
     battery_kwh = []
+
     for i in load.values:
+        dt_hr = timestep / 60.0
+        eta = math.sqrt(rte)  # symmetric split: eta_c = eta_d = sqrt(rte)
 
         upper_difference = i - upper_threshold
-        lower_difference = i - lower_threshold
 
-        if upper_difference > 0:  # discharging
-            # desired discharge power (to load), limited by inverter
-            upper_difference = min(upper_difference, kw)
+        if upper_difference > 0:
+            # DISCHARGE to clamp net load to the cap
+            # Desired discharge power (kW), limited by inverter
+            p_need = min(upper_difference, kw)
 
-            # Energy needed from battery this step with efficiency: E = P_out/eta_d * dt
-            # Use eta_d = sqrt(rte) without creating new vars (inline)
-            # If not enough energy, cap power so we exactly hit 0 kWh
-            if timestep > 0:
-                # max feasible discharge power from available energy this step:
-                # P_cap = battery_remaining_life * eta_d / dt
-                p_cap_from_energy = max(0.0, battery_remaining_life * math.sqrt(rte) / (timestep / 60.0))
-            else:
-                p_cap_from_energy = 0.0
+            # Also limited by available energy this step:
+            # p_cap_from_energy = SoC * eta / dt
+            p_cap_from_energy = (battery_remaining_life * eta / dt_hr) if dt_hr > 0 else 0.0
+            p_out = max(0.0, min(p_need, p_cap_from_energy))
 
-            p_out = min(upper_difference, p_cap_from_energy)
-
-            # update SoC: soc -= (p_out / eta_d) * dt
-            battery_remaining_life -= (p_out / max(1e-12, math.sqrt(rte))) * (timestep / 60.0)
+            # SoC update: soc -= (p_out / eta) * dt
+            battery_remaining_life -= (p_out / max(1e-12, eta)) * dt_hr
             battery_remaining_life = max(0.0, battery_remaining_life)
 
-            battery_kw.append(p_out)  # + = discharge
-            battery_kwh.append(battery_remaining_life)
-
-        elif lower_difference <= 0:  # charging
-            # desired charge power from grid into battery path (positive magnitude), limited by inverter
-            # lower_difference is negative or zero here; desired magnitude is -lower_difference
-            lower_difference = min(-lower_difference, kw)
-
-            # Energy that would go into SoC this step with efficiency: E = P_in*eta_c*dt
-            # Use eta_c = sqrt(rte) inline
-            if timestep > 0 and math.sqrt(rte) > 0:
-                # max charge power so we exactly fill to kwh:
-                # P_cap = remaining_room / (eta_c * dt)
-                remaining_room = max(0.0, kwh - battery_remaining_life)
-                p_cap_from_room = max(0.0, remaining_room / (max(1e-12, math.sqrt(rte)) * (timestep / 60.0)))
-            else:
-                p_cap_from_room = 0.0
-
-            p_in = min(lower_difference, p_cap_from_room)
-
-            # update SoC: soc += (p_in * eta_c) * dt
-            battery_remaining_life += (p_in * math.sqrt(rte)) * (timestep / 60.0)
-            battery_remaining_life = min(kwh, battery_remaining_life)
-
-            battery_kw.append(-p_in)  # - = charge
+            battery_kw.append(p_out)   # + = discharge
             battery_kwh.append(battery_remaining_life)
 
         else:
-            # deadband
-            battery_kw.append(0)
+            # OPTIONAL CHARGE using spare headroom; guarantees cap is not exceeded
+            # Headroom under the cap (kW)
+            headroom = max(0.0, upper_threshold - i)
+
+            # Desired charge power (kW): limited by inverter and headroom
+            p_in_desired = min(kw, headroom)
+
+            # Limited by remaining room in battery this step:
+            # p_cap_from_room = room / (eta * dt)
+            room_kwh = max(0.0, kwh - battery_remaining_life)
+            p_cap_from_room = (room_kwh / (max(1e-12, eta) * dt_hr)) if dt_hr > 0 else 0.0
+
+            p_in = max(0.0, min(p_in_desired, p_cap_from_room))
+
+            # SoC update: soc += p_in * eta * dt
+            battery_remaining_life += (p_in * eta) * dt_hr
+            battery_remaining_life = min(kwh, battery_remaining_life)
+
+            battery_kw.append(-p_in)   # - = charge
             battery_kwh.append(battery_remaining_life)
 
     return battery_kw, battery_kwh
