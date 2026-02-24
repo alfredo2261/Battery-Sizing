@@ -244,6 +244,7 @@ if load is not None:
     
     kw, kwh, output = batt_size(total_load, threshold, year, dod, rte, timestep, growth_rate, degradation)
     output_kw, output_kwh = charging_cycle(future_load, kw, kwh, threshold, timestep, rte)
+    output_kw_0, output_kwh_0 = charging_cycle(total_load, kw, kwh, threshold, timestep, rte)
     
     st.subheader("Suggested battery size")
     st.markdown(
@@ -275,9 +276,9 @@ if load is not None:
 
     fig, ax = plt.subplots()
     
-    ax.plot(date, output_kw, label = "Battery")
+    ax.plot(date, output_kw_0, label = "Battery")
     ax.plot(date, total_load.values, label = "Transformer Load")
-    ax.plot(date, np.subtract(total_load, output_kw), label = "Net Load")
+    ax.plot(date, np.subtract(total_load, output_kw_0), label = "Net Load")
     
     # ax.plot([threshold]*len(load), '--', label = "")
     # ax.plot([threshold - kw]*len(load), '--', label = "")
