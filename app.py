@@ -253,10 +253,12 @@ if load is not None:
     #existing_load_new = [i[0] for i in total_load.values]
     
     fig, ax = plt.subplots()
+
+    future_load = total_load*(1+growth_rate)**year
     
     ax.plot(date, output_kw, label = "Battery")
-    ax.plot(date, total_load.values, label = "Transformer Load")
-    ax.plot(date, np.subtract(total_load, output_kw), label = "Net Load")
+    ax.plot(date, future_load.values, label = "Transformer Load")
+    ax.plot(date, np.subtract(future_load, output_kw), label = "Net Load")
     
     # ax.plot([threshold]*len(load), '--', label = "")
     # ax.plot([threshold - kw]*len(load), '--', label = "")
