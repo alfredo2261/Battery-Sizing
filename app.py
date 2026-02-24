@@ -239,9 +239,11 @@ if load is not None:
     
     #start = st.number_input("Enter the charging plot's starting hour (use 0 to start plot at the first time interval of your load csv): ", value = 0)
     #end = st.number_input("Enter the charging plot's ending hour (use -1 to end plot at the last time interval of your load csv): ", value = -1)
+
+    future_load = total_load*(1+growth_rate)**year
     
     kw, kwh, output = batt_size(total_load, threshold, year, dod, rte, timestep, growth_rate, degradation)
-    output_kw, output_kwh = charging_cycle(total_load, kw, kwh, threshold, timestep, rte)
+    output_kw, output_kwh = charging_cycle(future_load, kw, kwh, threshold, timestep, rte)
     
     st.subheader("Suggested battery size")
     st.markdown(
@@ -253,8 +255,6 @@ if load is not None:
     #existing_load_new = [i[0] for i in total_load.values]
     
     fig, ax = plt.subplots()
-
-    future_load = total_load*(1+growth_rate)**year
     
     ax.plot(date, output_kw, label = "Battery")
     ax.plot(date, future_load.values, label = "Transformer Load")
@@ -276,8 +276,8 @@ if load is not None:
     data = pd.DataFrame({
         'Date':date,
         'Battery':np.array(output_kw),
-        'Transformer Load':total_load.values.ravel(),
-        'Net Load':np.subtract(total_load, output_kw).ravel()
+        'Transformer Load':future_load.values.ravel(),
+        'Net Load':np.subtract(future_load, output_kw).ravel()
     })
     
     st.dataframe(data)
