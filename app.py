@@ -130,95 +130,95 @@ def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, d
     return required_power, required_energy, output
 
 
-# def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
-#     lower_threshold = upper_threshold - kw
-#     battery_remaining_life = kwh
-#     battery_kw = []
-#     battery_kwh = []
-#     for i in load.values:
-        
-#         upper_difference = i - upper_threshold
-#         lower_difference = i - lower_threshold
-#         if upper_difference > 0: #discharging
-#             upper_difference = min(upper_difference, kw)#*rte # go through math/units, change to new variable
-#             battery_remaining_life -= upper_difference*(timestep/60)
-#             if battery_remaining_life > 0:
-#                 battery_kw.append(upper_difference)
-#                 battery_kwh.append(battery_remaining_life)
-#             else:
-#                 battery_kw.append(0)
-#                 battery_kwh.append(0)
-#                 battery_remaining_life = 0
-#         elif lower_difference <= 0: #charging
-#             lower_difference = max(lower_difference, -kw)/rte
-#             battery_remaining_life -= lower_difference*(timestep/60)
-#             if battery_remaining_life > 0 and battery_remaining_life <= kwh:
-#                 battery_kw.append(lower_difference)
-#                 battery_kwh.append(battery_remaining_life)
-#             else:
-#                 battery_kw.append(0)
-#                 battery_kwh.append(kwh)
-#                 battery_remaining_life = kwh
-    
-#         else:
-#             battery_kw.append(0)
-#             battery_kwh.append(battery_remaining_life)
-#     return battery_kw, battery_kwh
-
-
-def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
-    import math
-
+def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte, lower_threshold):
+    #lower_threshold = upper_threshold - kw
     battery_remaining_life = kwh
     battery_kw = []
     battery_kwh = []
-
     for i in load.values:
-        dt_hr = timestep / 60.0
-        eta = math.sqrt(rte)  # symmetric split: eta_c = eta_d = sqrt(rte)
-
+        
         upper_difference = i - upper_threshold
-
-        if upper_difference > 0:
-            # DISCHARGE to clamp net load to the cap
-            # Desired discharge power (kW), limited by inverter
-            p_need = min(upper_difference, kw)
-
-            # Also limited by available energy this step:
-            # p_cap_from_energy = SoC * eta / dt
-            p_cap_from_energy = (battery_remaining_life * eta / dt_hr) if dt_hr > 0 else 0.0
-            p_out = max(0.0, min(p_need, p_cap_from_energy))
-
-            # SoC update: soc -= (p_out / eta) * dt
-            battery_remaining_life -= (p_out / max(1e-12, eta)) * dt_hr
-            battery_remaining_life = max(0.0, battery_remaining_life)
-
-            battery_kw.append(p_out)   # + = discharge
-            battery_kwh.append(battery_remaining_life)
-
+        lower_difference = i - lower_threshold
+        if upper_difference > 0: #discharging
+            upper_difference = min(upper_difference, kw)#*rte # go through math/units, change to new variable
+            battery_remaining_life -= upper_difference*(timestep/60)
+            if battery_remaining_life > 0:
+                battery_kw.append(upper_difference)
+                battery_kwh.append(battery_remaining_life)
+            else:
+                battery_kw.append(0)
+                battery_kwh.append(0)
+                battery_remaining_life = 0
+        elif lower_difference <= 0: #charging
+            lower_difference = max(lower_difference, -kw)/rte
+            battery_remaining_life -= lower_difference*(timestep/60)
+            if battery_remaining_life > 0 and battery_remaining_life <= kwh:
+                battery_kw.append(lower_difference)
+                battery_kwh.append(battery_remaining_life)
+            else:
+                battery_kw.append(0)
+                battery_kwh.append(kwh)
+                battery_remaining_life = kwh
+    
         else:
-            # OPTIONAL CHARGE using spare headroom; guarantees cap is not exceeded
-            # Headroom under the cap (kW)
-            headroom = max(0.0, upper_threshold - i)
-
-            # Desired charge power (kW): limited by inverter and headroom
-            p_in_desired = min(kw, headroom)
-
-            # Limited by remaining room in battery this step:
-            # p_cap_from_room = room / (eta * dt)
-            room_kwh = max(0.0, kwh - battery_remaining_life)
-            p_cap_from_room = (room_kwh / (max(1e-12, eta) * dt_hr)) if dt_hr > 0 else 0.0
-
-            p_in = max(0.0, min(p_in_desired, p_cap_from_room))
-
-            # SoC update: soc += p_in * eta * dt
-            battery_remaining_life += (p_in * eta) * dt_hr
-            battery_remaining_life = min(kwh, battery_remaining_life)
-
-            battery_kw.append(-p_in)   # - = charge
+            battery_kw.append(0)
             battery_kwh.append(battery_remaining_life)
-
     return battery_kw, battery_kwh
+
+
+# def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
+#     import math
+
+#     battery_remaining_life = kwh
+#     battery_kw = []
+#     battery_kwh = []
+
+#     for i in load.values:
+#         dt_hr = timestep / 60.0
+#         eta = math.sqrt(rte)  # symmetric split: eta_c = eta_d = sqrt(rte)
+
+#         upper_difference = i - upper_threshold
+
+#         if upper_difference > 0:
+#             # DISCHARGE to clamp net load to the cap
+#             # Desired discharge power (kW), limited by inverter
+#             p_need = min(upper_difference, kw)
+
+#             # Also limited by available energy this step:
+#             # p_cap_from_energy = SoC * eta / dt
+#             p_cap_from_energy = (battery_remaining_life * eta / dt_hr) if dt_hr > 0 else 0.0
+#             p_out = max(0.0, min(p_need, p_cap_from_energy))
+
+#             # SoC update: soc -= (p_out / eta) * dt
+#             battery_remaining_life -= (p_out / max(1e-12, eta)) * dt_hr
+#             battery_remaining_life = max(0.0, battery_remaining_life)
+
+#             battery_kw.append(p_out)   # + = discharge
+#             battery_kwh.append(battery_remaining_life)
+
+#         else:
+#             # OPTIONAL CHARGE using spare headroom; guarantees cap is not exceeded
+#             # Headroom under the cap (kW)
+#             headroom = max(0.0, upper_threshold - i)
+
+#             # Desired charge power (kW): limited by inverter and headroom
+#             p_in_desired = min(kw, headroom)
+
+#             # Limited by remaining room in battery this step:
+#             # p_cap_from_room = room / (eta * dt)
+#             room_kwh = max(0.0, kwh - battery_remaining_life)
+#             p_cap_from_room = (room_kwh / (max(1e-12, eta) * dt_hr)) if dt_hr > 0 else 0.0
+
+#             p_in = max(0.0, min(p_in_desired, p_cap_from_room))
+
+#             # SoC update: soc += p_in * eta * dt
+#             battery_remaining_life += (p_in * eta) * dt_hr
+#             battery_remaining_life = min(kwh, battery_remaining_life)
+
+#             battery_kw.append(-p_in)   # - = charge
+#             battery_kwh.append(battery_remaining_life)
+
+#     return battery_kw, battery_kwh
 
 
 st.title("BESS-SP: Battery Energy Storage System Sizing Planner")
@@ -231,6 +231,7 @@ if load is not None:
     date = pd.to_datetime(load['Date'])
     timestep = st.number_input("Enter the time granularity of the uploaded load data (in minutes): ", value = 0)
     threshold = st.number_input("Enter the transformer normal thermal rating (in kW): ", value = 0)
+    lower_threshold = st.number_input("Enter the load below which the battery should charge (kW): ", value = 0)
     year = st.number_input("Enter the number of years the traditional solution will be deferred (from 0-15): ", value = 0)
     growth_rate = st.number_input("Enter the annual load growth rate (from 0-1): ", min_value = 0.0, max_value = 1.0, step=0.0001, format="%.4f")
     degradation = st.number_input("Enter the annual degradation rate (from 0-1): ", value = 0.000, step=0.001, format="%0.3f")
@@ -243,7 +244,7 @@ if load is not None:
     future_load = total_load*(1+growth_rate)**year
     
     kw, kwh, output = batt_size(total_load, threshold, year, dod, rte, timestep, growth_rate, degradation)
-    output_kw, output_kwh = charging_cycle(future_load, kw, kwh, threshold, timestep, rte)
+    output_kw, output_kwh = charging_cycle(future_load, kw, kwh, threshold, timestep, rte, lower_threshold)
     output_kw_0, output_kwh_0 = charging_cycle(total_load, kw, kwh, threshold, timestep, rte)
     
     st.subheader("Suggested battery size")
