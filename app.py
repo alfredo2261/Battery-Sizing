@@ -245,7 +245,7 @@ if load is not None:
     
     kw, kwh, output = batt_size(total_load, threshold, year, dod, rte, timestep, growth_rate, degradation)
     output_kw, output_kwh = charging_cycle(future_load, kw, kwh, threshold, timestep, rte, lower_threshold)
-    output_kw_0, output_kwh_0 = charging_cycle(total_load, kw, kwh, threshold, timestep, rte)
+    output_kw_0, output_kwh_0 = charging_cycle(total_load, kw, kwh, threshold, timestep, rte, lower_threshold)
     
     st.subheader("Suggested battery size")
     st.markdown(
