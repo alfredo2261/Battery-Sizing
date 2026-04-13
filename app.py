@@ -298,7 +298,7 @@ if load is not None:
         'Date':date,
         'Battery':np.array(output_kw),
         'Transformer Load':future_load.values.ravel(),
-        'Net Load':np.subtract(future_load, output_kw).ravel()
+        'Net Load':np.subtract(future_load, output_kw).to_numpy().ravel()
     })
     
     st.dataframe(data)
