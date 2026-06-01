@@ -125,7 +125,7 @@ def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, d
     required_power_output = np.round(required_power/1000, decimals=2)
     required_energy_output = np.round(required_energy/1000, decimals=2)
 
-    output = "Minimum Power: " + str(required_power_output) + "MW, Minimum Energy: " + str(required_energy_output) + "MWh"
+    output = "Minimum Power: " + str(required_power_output) + "MW, Minimum Energy: " + str(required_energy_output) + "MWh, Hours: " + str(required_energy_output/required_power_output)
     
     return required_power, required_energy, output
 
@@ -230,7 +230,7 @@ if load is not None:
     total_load = load['Total load (kW)']
     date = pd.to_datetime(load['Date'])
     timestep = st.number_input("Enter the time granularity of the uploaded load data (in minutes): ", value = 0)
-    threshold = st.number_input("Enter the transformer normal thermal rating (in kW): ", value = 0)
+    threshold = st.number_input("Enter the load above which the battery should discharge (kW): ", value = 0)
     lower_threshold = st.number_input("Enter the load below which the battery should charge (kW): ", value = 0)
     year = st.number_input("Enter the number of years the traditional solution will be deferred (from 0-15): ", value = 0)
     growth_rate = st.number_input("Enter the annual load growth rate (from 0-1): ", min_value = 0.0, max_value = 1.0, step=0.0001, format="%.4f")
