@@ -125,7 +125,7 @@ def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, d
     required_power_output = np.round(required_power/1000, decimals=2)
     required_energy_output = np.round(required_energy/1000, decimals=2)
 
-    output = "Minimum Power: " + str(required_power_output) + "MW, Minimum Energy: " + str(required_energy_output) + "MWh, Hours: " + str(required_energy_output/required_power_output)
+    output = "Minimum Power: " + str(required_power_output) + "MW, Minimum Energy: " + str(required_energy_output) + "MWh, Hours: " + str(np.round(required_energy_output/required_power_output, decimals=2))
     
     return required_power, required_energy, output
 
