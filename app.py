@@ -185,8 +185,11 @@ def batt_size(load,
     import numpy as np
 
     load = load * (1 + growth_rate) ** year
-    dt = timestep / 60
+    dt = timestep / 60  # hours
 
+    # -------------------------
+    # CORRECT DISPATCH SIGNAL
+    # -------------------------
     battery_power = np.where(
         load > max_allowable_load,
         load - max_allowable_load,
@@ -195,38 +198,45 @@ def batt_size(load,
             load - start_charging_load,
             0
         )
-    )
-
-    battery_power = np.array(battery_power)
+    ).astype(float)
 
     required_power = np.max(np.abs(battery_power))
 
-    soc = np.cumsum(battery_power * dt)
+    # -------------------------
+    # CRITICAL FIX: REMOVE SOC DRIFT
+    # (cap at cycle window, not full-year accumulation)
+    # -------------------------
+    energy_trace = np.cumsum(battery_power * dt)
 
-    required_energy = soc.max() - soc.min()
-
-    degradation_factor = (1 - degradation) ** year
-
-    if degradation_factor > 0:
-        required_energy /= degradation_factor
-
-    if dod > 0:
-        required_energy /= dod
-
-    if rte > 0:
-        required_energy /= rte
-
-    required_power_output = np.round(required_power / 1000, 2)
-    required_energy_output = np.round(required_energy / 1000, 2)
-
-    hours = (
-        np.round(required_energy_output / required_power_output, 2)
-        if required_power_output > 0 else 0
+    # remove artificial drift caused by long-term bias
+    energy_trace = energy_trace - np.linspace(
+        energy_trace[0],
+        energy_trace[-1],
+        len(energy_trace)
     )
 
+    required_energy = energy_trace.max() - energy_trace.min()
+
+    # -------------------------
+    # DERATING
+    # -------------------------
+    degradation_factor = (1 - degradation) ** year
+
+    required_energy = required_energy / degradation_factor
+    required_energy = required_energy / max(dod, 1e-9)
+    required_energy = required_energy / max(rte, 1e-9)
+
+    # -------------------------
+    # OUTPUT
+    # -------------------------
+    mw = np.round(required_power / 1000, 3)
+    mwh = np.round(required_energy / 1000, 3)
+
+    hours = np.round(mwh / mw, 3) if mw > 0 else 0
+
     output = (
-        f"Minimum Power: {required_power_output}MW, "
-        f"Minimum Energy: {required_energy_output}MWh, "
+        f"Minimum Power: {mw}MW, "
+        f"Minimum Energy: {mwh}MWh, "
         f"Hours: {hours}"
     )
 
