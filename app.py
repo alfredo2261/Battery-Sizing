@@ -185,75 +185,62 @@ def batt_size(load,
     load = load * (1 + growth_rate) ** year
     dt = timestep / 60
 
-    battery_power = np.where(
-        load > max_allowable_load,
-        load - max_allowable_load,
-        np.where(
-            load < start_charging_load,
-            load - start_charging_load,
-            0
-        )
-    )
+    # --- DISPATCH (IDENTICAL TO SIMULATION LOGIC) ---
+    battery_power = np.zeros(len(load))
 
-    battery_power = pd.Series(battery_power, index=load.index)
+    for i, d in enumerate(load.values):
 
+        if d > max_allowable_load:
+            battery_power[i] = d - max_allowable_load
+
+        elif d < start_charging_load:
+            battery_power[i] = d - start_charging_load
+
+        else:
+            battery_power[i] = 0
+
+    battery_power = np.array(battery_power)
+
+    # --- POWER RATING (MUST MATCH OPERATIONAL CLIPPING) ---
     required_power = np.max(np.abs(battery_power))
 
-    # ---- CRITICAL FIX: bounded SOC simulation ----
+    # --- ENERGY VIA BOUNDED SOC ---
+    dt = timestep / 60
     charge_eff = np.sqrt(rte)
     discharge_eff = np.sqrt(rte)
 
-    # initial guess (upper bound)
-    energy = (np.sum(np.abs(battery_power)) * dt) / rte
-    energy *= 2  # safe oversize start
+    energy_cap = 0
 
-    for _ in range(20):
+    for _ in range(15):
 
-        soc = energy * dod
-        soc_min = soc
-        soc_max = soc
-
-        soc_trace = [soc]
+        soc = 0
+        soc_max = 0
+        soc_min = 0
 
         for p in battery_power:
 
-            if p > 0:  # discharge
+            if p > 0:
                 soc -= (p * dt) / discharge_eff
-            elif p < 0:  # charge
+            elif p < 0:
                 soc += (-p * dt) * charge_eff
 
-            soc = min(max(soc, 0), energy * dod)
+            soc = min(max(soc, -energy_cap, energy_cap), energy_cap)
 
-            soc_trace.append(soc)
+            soc_max = max(soc_max, soc)
+            soc_min = min(soc_min, soc)
 
-        soc_trace = np.array(soc_trace)
+        new_energy = soc_max - soc_min
 
-        required = soc_trace.max() - soc_trace.min()
-
-        if abs(required - soc) < 1e-3:
+        if abs(new_energy - energy_cap) < 1e-6:
             break
 
-        energy = required
+        energy_cap = new_energy
 
     degradation_factor = (1 - degradation) ** year
 
-    required_energy = energy / degradation_factor / rte
+    required_energy = energy_cap / degradation_factor / dod
 
-    required_power_output = np.round(required_power / 1000, 2)
-    required_energy_output = np.round(required_energy / 1000, 2)
-
-    hours = (
-        np.round(required_energy_output / required_power_output, 2)
-        if required_power_output > 0 else 0
-    )
-
-    output = (
-        f"Minimum Power: {required_power_output}MW, "
-        f"Minimum Energy: {required_energy_output}MWh, "
-        f"Hours: {hours}"
-    )
-
-    return required_power, required_energy, output
+    return required_power, required_energy, ""
 
 
 
