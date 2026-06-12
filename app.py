@@ -182,24 +182,40 @@ def batt_size(load,
               degradation,
               start_charging_load):
 
+    import numpy as np
+    import pandas as pd
+
     load = load * (1 + growth_rate) ** year
     dt = timestep / 60
 
-    # --- DISCHARGE ONLY FOR SIZING ---
     discharge = (load - max_allowable_load).clip(lower=0)
+    charge = (start_charging_load - load).clip(lower=0)
 
-    required_power = discharge.max()
+    required_power = np.max(np.abs(discharge))
 
-    # --- ENERGY = DISCHARGE EVENTS ONLY ---
-    energy_events = [
-        g for _, g in discharge.groupby((discharge == 0).cumsum())
-    ]
+    def event_energy(series):
+        groups = [
+            g for _, g in series.groupby((series == 0).cumsum())
+        ]
+        return max((g.sum() * dt for g in groups), default=0)
 
-    event_energy = max(g.sum() * dt for g in energy_events) if len(energy_events) > 0 else 0
+    discharge_energy = event_energy(discharge)
+    charge_energy = event_energy(charge)
+
+    net_energy = max(discharge_energy - charge_energy, 0)
 
     degradation_factor = (1 - degradation) ** year
 
-    required_energy = event_energy / degradation_factor / dod / rte
+    required_energy = net_energy
+
+    if degradation_factor > 0:
+        required_energy = required_energy / degradation_factor
+
+    if dod > 0:
+        required_energy = required_energy / dod
+
+    if rte > 0:
+        required_energy = required_energy / rte
 
     required_power_output = np.round(required_power / 1000, 2)
     required_energy_output = np.round(required_energy / 1000, 2)
@@ -218,8 +234,6 @@ def batt_size(load,
     return required_power, required_energy, output
 
 
-
-
 def charging_cycle(load,
                    kw,
                    kwh,
@@ -227,6 +241,8 @@ def charging_cycle(load,
                    timestep,
                    rte,
                    lower_threshold):
+
+    import numpy as np
 
     dt = timestep / 60
 
@@ -245,7 +261,6 @@ def charging_cycle(load,
             power = min(demand - upper_threshold, kw)
 
             energy = power * dt / discharge_eff
-
             energy = min(energy, soc)
 
             soc -= energy
@@ -257,14 +272,14 @@ def charging_cycle(load,
             power = min(lower_threshold - demand, kw)
 
             energy = power * dt * charge_eff
-
             energy = min(energy, kwh - soc)
 
             soc += energy
 
-            battery_kw.append(-(energy / charge_eff / dt))
+            battery_kw.append(-energy / dt / charge_eff)
 
         else:
+
             battery_kw.append(0)
 
         battery_kwh.append(soc)
