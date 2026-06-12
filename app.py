@@ -182,87 +182,42 @@ def batt_size(load,
               degradation,
               start_charging_load):
 
-    import numpy as np
-
-    # -----------------------------
-    # PREP
-    # -----------------------------
     load = load * (1 + growth_rate) ** year
-    dt = timestep / 60  # hours
+    dt = timestep / 60
 
-    # -----------------------------
-    # CONTROL POLICY (POWER SIGNAL)
-    # + discharge above upper limit
-    # - charge below lower limit
-    # -----------------------------
-    p = np.where(
-        load > max_allowable_load,
-        load - max_allowable_load,
-        np.where(
-            load < start_charging_load,
-            load - start_charging_load,
-            0
-        )
-    ).astype(float)
+    # --- DISCHARGE ONLY FOR SIZING ---
+    discharge = (load - max_allowable_load).clip(lower=0)
 
-    # power sizing (fully consistent with dispatch)
-    required_power = np.max(np.abs(p))
+    required_power = discharge.max()
 
-    # -----------------------------
-    # EFFICIENCY MODEL (split form)
-    # -----------------------------
-    charge_eff = np.sqrt(rte)
-    discharge_eff = np.sqrt(rte)
+    # --- ENERGY = DISCHARGE EVENTS ONLY ---
+    energy_events = [
+        g for _, g in discharge.groupby((discharge == 0).cumsum())
+    ]
 
-    # -----------------------------
-    # SOC SIMULATION (BOUNDARY CORRECT)
-    # -----------------------------
-    soc = 0.0
-    soc_max = 0.0
-    soc_min = 0.0
+    event_energy = max(g.sum() * dt for g in energy_events) if len(energy_events) > 0 else 0
 
-    for pi in p:
-        if pi > 0:
-            soc -= (pi * dt) / discharge_eff
-        elif pi < 0:
-            soc += (-pi * dt) * charge_eff
-
-        soc_max = max(soc_max, soc)
-        soc_min = min(soc_min, soc)
-
-    raw_energy = soc_max - soc_min
-
-    # -----------------------------
-    # DERATING
-    # -----------------------------
     degradation_factor = (1 - degradation) ** year
 
-    required_energy = raw_energy
+    required_energy = event_energy / degradation_factor / dod / rte
 
-    if degradation_factor > 0:
-        required_energy /= degradation_factor
+    required_power_output = np.round(required_power / 1000, 2)
+    required_energy_output = np.round(required_energy / 1000, 2)
 
-    if dod > 0:
-        required_energy /= dod
-
-    if rte > 0:
-        required_energy /= rte
-
-    # -----------------------------
-    # OUTPUT
-    # -----------------------------
-    mw = required_power / 1000
-    mwh = required_energy / 1000
-
-    hours = (mwh / mw) if mw > 0 else 0
+    hours = (
+        np.round(required_energy_output / required_power_output, 2)
+        if required_power_output > 0 else 0
+    )
 
     output = (
-        f"Minimum Power: {mw:.3f}MW, "
-        f"Minimum Energy: {mwh:.3f}MWh, "
-        f"Hours: {hours:.3f}"
+        f"Minimum Power: {required_power_output}MW, "
+        f"Minimum Energy: {required_energy_output}MWh, "
+        f"Hours: {hours}"
     )
 
     return required_power, required_energy, output
+
+
 
 
 def charging_cycle(load,
@@ -273,37 +228,41 @@ def charging_cycle(load,
                    rte,
                    lower_threshold):
 
-    import numpy as np
-
     dt = timestep / 60
-
-    charge_eff = np.sqrt(rte)
-    discharge_eff = np.sqrt(rte)
 
     soc = kwh
 
     battery_kw = []
     battery_kwh = []
 
-    for d in load.values:
+    charge_eff = np.sqrt(rte)
+    discharge_eff = np.sqrt(rte)
 
-        if d > upper_threshold:
-            p = min(d - upper_threshold, kw)
+    for demand in load.values:
 
-            e = p * dt / discharge_eff
-            e = min(e, soc)
+        if demand > upper_threshold:
 
-            soc -= e
-            battery_kw.append(e * discharge_eff / dt)
+            power = min(demand - upper_threshold, kw)
 
-        elif d < lower_threshold:
-            p = min(lower_threshold - d, kw)
+            energy = power * dt / discharge_eff
 
-            e = p * dt * charge_eff
-            e = min(e, kwh - soc)
+            energy = min(energy, soc)
 
-            soc += e
-            battery_kw.append(-e / dt / charge_eff)
+            soc -= energy
+
+            battery_kw.append(energy * discharge_eff / dt)
+
+        elif demand < lower_threshold:
+
+            power = min(lower_threshold - demand, kw)
+
+            energy = power * dt * charge_eff
+
+            energy = min(energy, kwh - soc)
+
+            soc += energy
+
+            battery_kw.append(-(energy / charge_eff / dt))
 
         else:
             battery_kw.append(0)
