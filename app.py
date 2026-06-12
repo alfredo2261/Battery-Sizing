@@ -185,62 +185,37 @@ def batt_size(load,
     load = load * (1 + growth_rate) ** year
     dt = timestep / 60
 
-    # --- DISPATCH (IDENTICAL TO SIMULATION LOGIC) ---
-    battery_power = np.zeros(len(load))
+    # --- DISCHARGE ONLY FOR SIZING ---
+    discharge = (load - max_allowable_load).clip(lower=0)
 
-    for i, d in enumerate(load.values):
+    required_power = discharge.max()
 
-        if d > max_allowable_load:
-            battery_power[i] = d - max_allowable_load
+    # --- ENERGY = DISCHARGE EVENTS ONLY ---
+    energy_events = [
+        g for _, g in discharge.groupby((discharge == 0).cumsum())
+    ]
 
-        elif d < start_charging_load:
-            battery_power[i] = d - start_charging_load
-
-        else:
-            battery_power[i] = 0
-
-    battery_power = np.array(battery_power)
-
-    # --- POWER RATING (MUST MATCH OPERATIONAL CLIPPING) ---
-    required_power = np.max(np.abs(battery_power))
-
-    # --- ENERGY VIA BOUNDED SOC ---
-    dt = timestep / 60
-    charge_eff = np.sqrt(rte)
-    discharge_eff = np.sqrt(rte)
-
-    energy_cap = 0
-
-    for _ in range(15):
-
-        soc = 0
-        soc_max = 0
-        soc_min = 0
-
-        for p in battery_power:
-
-            if p > 0:
-                soc -= (p * dt) / discharge_eff
-            elif p < 0:
-                soc += (-p * dt) * charge_eff
-
-            soc = min(max(soc, -energy_cap, energy_cap), energy_cap)
-
-            soc_max = max(soc_max, soc)
-            soc_min = min(soc_min, soc)
-
-        new_energy = soc_max - soc_min
-
-        if abs(new_energy - energy_cap) < 1e-6:
-            break
-
-        energy_cap = new_energy
+    event_energy = max(g.sum() * dt for g in energy_events) if len(energy_events) > 0 else 0
 
     degradation_factor = (1 - degradation) ** year
 
-    required_energy = energy_cap / degradation_factor / dod
+    required_energy = event_energy / degradation_factor / dod / rte
 
-    return required_power, required_energy, ""
+    required_power_output = np.round(required_power / 1000, 2)
+    required_energy_output = np.round(required_energy / 1000, 2)
+
+    hours = (
+        np.round(required_energy_output / required_power_output, 2)
+        if required_power_output > 0 else 0
+    )
+
+    output = (
+        f"Minimum Power: {required_power_output}MW, "
+        f"Minimum Energy: {required_energy_output}MWh, "
+        f"Hours: {hours}"
+    )
+
+    return required_power, required_energy, output
 
 
 
