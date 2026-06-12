@@ -101,77 +101,217 @@ import matplotlib.dates as mdates
 #     return health[year]
 
 
-def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, degradation, start_charging_load):
-    load = load*(1+growth_rate)**year
-    timestep = timestep / 60
+# def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, degradation, start_charging_load):
+#     load = load*(1+growth_rate)**year
+#     timestep = timestep / 60
     
-    battery_need_upper = load - max_allowable_load
-    battery_need_upper = battery_need_upper.clip(lower=0)
+#     battery_need_upper = load - max_allowable_load
+#     battery_need_upper = battery_need_upper.clip(lower=0)
 
-    battery_need_lower = load - start_charging_load
-    battery_need_lower = battery_need_lower.clip(upper=0)
+#     battery_need_lower = load - start_charging_load
+#     battery_need_lower = battery_need_lower.clip(upper=0)
 
-    battery_need = battery_need_upper + battery_need_lower
-    print(battery_need)
-    #degradation = degradation_profile(year)/100
-    degradation = (1-degradation)**year
+#     battery_need = battery_need_upper + battery_need_lower
+#     #degradation = degradation_profile(year)/100
+#     degradation = (1-degradation)**year
     
-    dfs = [battery_need for _, battery_need in battery_need.groupby((battery_need == 0).cumsum())]
+#     dfs = [battery_need for _, battery_need in battery_need.groupby((battery_need == 0).cumsum())]
     
-    sums = []
-    for i in dfs:
-        sums.append(np.sum(i.values))
+#     sums = []
+#     for i in dfs:
+#         sums.append(np.sum(i.values))
 
-    required_power = np.max(battery_need)
+#     required_power = np.max(battery_need)
     
-    required_energy = np.max(sums)*timestep
-    required_energy = required_energy/degradation/dod/rte
+#     required_energy = np.max(sums)*timestep
+#     required_energy = required_energy/degradation/dod/rte
 
-    required_power_output = np.round(required_power/1000, decimals=2)
-    required_energy_output = np.round(required_energy/1000, decimals=2)
+#     required_power_output = np.round(required_power/1000, decimals=2)
+#     required_energy_output = np.round(required_energy/1000, decimals=2)
 
-    output = "Minimum Power: " + str(required_power_output) + "MW, Minimum Energy: " + str(required_energy_output) + "MWh, Hours: " + str(np.round(required_energy_output/required_power_output, decimals=2))
+#     output = "Minimum Power: " + str(required_power_output) + "MW, Minimum Energy: " + str(required_energy_output) + "MWh, Hours: " + str(np.round(required_energy_output/required_power_output, decimals=2))
     
+#     return required_power, required_energy, output
+
+
+# def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte, lower_threshold):
+#     #lower_threshold = upper_threshold - kw
+#     battery_remaining_life = kwh
+#     battery_kw = []
+#     battery_kwh = []
+#     for i in load.values:
+        
+#         upper_difference = i - upper_threshold
+#         lower_difference = i - lower_threshold
+#         if upper_difference > 0: #discharging
+#             upper_difference = min(upper_difference, kw)#*rte # go through math/units, change to new variable
+#             battery_remaining_life -= upper_difference*(timestep/60)
+#             if battery_remaining_life > 0:
+#                 battery_kw.append(upper_difference)
+#                 battery_kwh.append(battery_remaining_life)
+#             else:
+#                 battery_kw.append(0)
+#                 battery_kwh.append(0)
+#                 battery_remaining_life = 0
+#         elif lower_difference <= 0: #charging
+#             lower_difference = max(lower_difference, -kw)/rte
+#             battery_remaining_life -= lower_difference*(timestep/60)
+#             if battery_remaining_life > 0 and battery_remaining_life <= kwh:
+#                 battery_kw.append(lower_difference)
+#                 battery_kwh.append(battery_remaining_life)
+#             else:
+#                 battery_kw.append(0)
+#                 battery_kwh.append(kwh)
+#                 battery_remaining_life = kwh
+    
+#         else:
+#             battery_kw.append(0)
+#             battery_kwh.append(battery_remaining_life)
+#     return battery_kw, battery_kwh
+
+
+
+
+def batt_size(load,
+              max_allowable_load,
+              year,
+              dod,
+              rte,
+              timestep,
+              growth_rate,
+              degradation,
+              start_charging_load):
+
+    load = load * (1 + growth_rate) ** year
+    dt = timestep / 60  # hours
+
+    # Battery dispatch signal
+    battery_power = np.where(
+        load > max_allowable_load,
+        load - max_allowable_load,          # discharge (+)
+        np.where(
+            load < start_charging_load,
+            load - start_charging_load,     # charge (-)
+            0
+        )
+    )
+
+    battery_power = pd.Series(battery_power, index=load.index)
+
+    # Required inverter power
+    required_discharge_power = battery_power.max()
+    required_charge_power = abs(battery_power.min())
+    required_power = max(required_discharge_power,
+                         required_charge_power)
+
+    # SOC trajectory
+    soc = np.cumsum(battery_power * dt)
+
+    # Energy swing required
+    required_energy = soc.max() - soc.min()
+
+    # Apply degradation, DoD and RTE derates
+    degradation_factor = (1 - degradation) ** year
+
+    required_energy = (
+        required_energy
+        / degradation_factor
+        / dod
+        / rte
+    )
+
+    required_power_output = np.round(required_power / 1000, 2)
+    required_energy_output = np.round(required_energy / 1000, 2)
+
+    hours = (
+        np.round(required_energy_output / required_power_output, 2)
+        if required_power_output > 0
+        else 0
+    )
+
+    output = (
+        f"Minimum Power: {required_power_output}MW, "
+        f"Minimum Energy: {required_energy_output}MWh, "
+        f"Hours: {hours}"
+    )
+
     return required_power, required_energy, output
 
 
-def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte, lower_threshold):
-    #lower_threshold = upper_threshold - kw
-    battery_remaining_life = kwh
+def charging_cycle(load,
+                   kw,
+                   kwh,
+                   upper_threshold,
+                   timestep,
+                   rte,
+                   lower_threshold):
+
+    dt = timestep / 60  # hours
+
+    soc = kwh
+
     battery_kw = []
     battery_kwh = []
-    for i in load.values:
-        
-        upper_difference = i - upper_threshold
-        lower_difference = i - lower_threshold
-        if upper_difference > 0: #discharging
-            upper_difference = min(upper_difference, kw)#*rte # go through math/units, change to new variable
-            battery_remaining_life -= upper_difference*(timestep/60)
-            if battery_remaining_life > 0:
-                battery_kw.append(upper_difference)
-                battery_kwh.append(battery_remaining_life)
-            else:
-                battery_kw.append(0)
-                battery_kwh.append(0)
-                battery_remaining_life = 0
-        elif lower_difference <= 0: #charging
-            lower_difference = max(lower_difference, -kw)/rte
-            battery_remaining_life -= lower_difference*(timestep/60)
-            if battery_remaining_life > 0 and battery_remaining_life <= kwh:
-                battery_kw.append(lower_difference)
-                battery_kwh.append(battery_remaining_life)
-            else:
-                battery_kw.append(0)
-                battery_kwh.append(kwh)
-                battery_remaining_life = kwh
-    
+
+    charge_eff = np.sqrt(rte)
+    discharge_eff = np.sqrt(rte)
+
+    for demand in load.values:
+
+        # DISCHARGE
+        if demand > upper_threshold:
+
+            power = min(demand - upper_threshold, kw)
+
+            energy_removed = power * dt / discharge_eff
+
+            actual_energy_removed = min(energy_removed, soc)
+
+            soc -= actual_energy_removed
+
+            actual_power = (
+                actual_energy_removed
+                * discharge_eff
+                / dt
+            )
+
+            battery_kw.append(actual_power)
+
+        # CHARGE
+        elif demand < lower_threshold:
+
+            power = min(lower_threshold - demand, kw)
+
+            energy_added = power * dt * charge_eff
+
+            actual_energy_added = min(
+                energy_added,
+                kwh - soc
+            )
+
+            soc += actual_energy_added
+
+            actual_power = -(
+                actual_energy_added
+                / charge_eff
+                / dt
+            )
+
+            battery_kw.append(actual_power)
+
+        # IDLE
         else:
+
             battery_kw.append(0)
-            battery_kwh.append(battery_remaining_life)
+
+        battery_kwh.append(soc)
+
     return battery_kw, battery_kwh
 
 
-# def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
+
+
+# #2 def charging_cycle(load, kw, kwh, upper_threshold, timestep, rte):
 #     import math
 
 #     battery_remaining_life = kwh
