@@ -170,6 +170,7 @@ import matplotlib.dates as mdates
 #     return battery_kw, battery_kwh
 
 
+
 def batt_size(load,
               max_allowable_load,
               year,
@@ -180,96 +181,40 @@ def batt_size(load,
               degradation,
               start_charging_load):
 
-    import numpy as np
-
     load = load * (1 + growth_rate) ** year
     dt = timestep / 60
 
-    # SINGLE PHYSICAL DISPATCH SIGNAL
-    p = np.where(
-        load > max_allowable_load,
-        load - max_allowable_load,
-        np.where(
-            load < start_charging_load,
-            load - start_charging_load,
-            0
-        )
-    ).astype(float)
+    # --- DISCHARGE ONLY FOR SIZING ---
+    discharge = (load - max_allowable_load).clip(lower=0)
 
-    required_power = np.max(np.abs(p))
+    required_power = discharge.max()
 
-    # SOC TRAJECTORY (ONLY ONE SYSTEM)
-    soc = np.cumsum(p * dt)
+    # --- ENERGY = DISCHARGE EVENTS ONLY ---
+    energy_events = [
+        g for _, g in discharge.groupby((discharge == 0).cumsum())
+    ]
 
-    required_energy = soc.max() - soc.min()
+    event_energy = max(g.sum() * dt for g in energy_events) if len(energy_events) > 0 else 0
 
     degradation_factor = (1 - degradation) ** year
 
-    if degradation_factor > 0:
-        required_energy /= degradation_factor
-    if dod > 0:
-        required_energy /= dod
-    if rte > 0:
-        required_energy /= rte
+    required_energy = event_energy / degradation_factor / dod / rte
 
-    mw = required_power / 1000
-    mwh = required_energy / 1000
+    required_power_output = np.round(required_power / 1000, 2)
+    required_energy_output = np.round(required_energy / 1000, 2)
 
-    hours = (mwh / mw) if mw > 0 else 0
+    hours = (
+        np.round(required_energy_output / required_power_output, 2)
+        if required_power_output > 0 else 0
+    )
 
     output = (
-        f"Minimum Power: {mw:.3f}MW, "
-        f"Minimum Energy: {mwh:.3f}MWh, "
-        f"Hours: {hours:.3f}"
+        f"Minimum Power: {required_power_output}MW, "
+        f"Minimum Energy: {required_energy_output}MWh, "
+        f"Hours: {hours}"
     )
 
     return required_power, required_energy, output
-
-
-# def batt_size(load, working!!!
-#               max_allowable_load,
-#               year,
-#               dod,
-#               rte,
-#               timestep,
-#               growth_rate,
-#               degradation,
-#               start_charging_load):
-
-#     load = load * (1 + growth_rate) ** year
-#     dt = timestep / 60
-
-#     # --- DISCHARGE ONLY FOR SIZING ---
-#     discharge = (load - max_allowable_load).clip(lower=0)
-
-#     required_power = discharge.max()
-
-#     # --- ENERGY = DISCHARGE EVENTS ONLY ---
-#     energy_events = [
-#         g for _, g in discharge.groupby((discharge == 0).cumsum())
-#     ]
-
-#     event_energy = max(g.sum() * dt for g in energy_events) if len(energy_events) > 0 else 0
-
-#     degradation_factor = (1 - degradation) ** year
-
-#     required_energy = event_energy / degradation_factor / dod / rte
-
-#     required_power_output = np.round(required_power / 1000, 2)
-#     required_energy_output = np.round(required_energy / 1000, 2)
-
-#     hours = (
-#         np.round(required_energy_output / required_power_output, 2)
-#         if required_power_output > 0 else 0
-#     )
-
-#     output = (
-#         f"Minimum Power: {required_power_output}MW, "
-#         f"Minimum Energy: {required_energy_output}MWh, "
-#         f"Hours: {hours}"
-#     )
-
-#     return required_power, required_energy, output
 
 
 
