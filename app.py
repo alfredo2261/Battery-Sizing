@@ -183,41 +183,56 @@ def batt_size(load,
               start_charging_load):
 
     load = load * (1 + growth_rate) ** year
-    dt = timestep / 60  # hours
+    dt = timestep / 60
 
-    # Battery dispatch signal
-    battery_power = np.where(
-        load > max_allowable_load,
-        load - max_allowable_load,          # discharge (+)
-        np.where(
-            load < start_charging_load,
-            load - start_charging_load,     # charge (-)
-            0
-        )
-    )
+    charge_eff = np.sqrt(rte)
+    discharge_eff = np.sqrt(rte)
 
-    battery_power = pd.Series(battery_power, index=load.index)
+    battery_power = []
+    soc = [0]
 
-    # Required inverter power
-    required_discharge_power = battery_power.max()
-    required_charge_power = abs(battery_power.min())
-    required_power = max(required_discharge_power,
-                         required_charge_power)
+    for demand in load.values:
 
-    # SOC trajectory
-    soc = np.cumsum(battery_power * dt)
+        if demand > max_allowable_load:
 
-    # Energy swing required
+            power = demand - max_allowable_load
+
+            battery_power.append(power)
+
+            soc.append(
+                soc[-1]
+                - power * dt / discharge_eff
+            )
+
+        elif demand < start_charging_load:
+
+            power = start_charging_load - demand
+
+            battery_power.append(-power)
+
+            soc.append(
+                soc[-1]
+                + power * dt * charge_eff
+            )
+
+        else:
+
+            battery_power.append(0)
+            soc.append(soc[-1])
+
+    battery_power = np.array(battery_power)
+    soc = np.array(soc)
+
+    required_power = np.max(np.abs(battery_power))
+
     required_energy = soc.max() - soc.min()
 
-    # Apply degradation, DoD and RTE derates
     degradation_factor = (1 - degradation) ** year
 
     required_energy = (
         required_energy
         / degradation_factor
         / dod
-        / rte
     )
 
     required_power_output = np.round(required_power / 1000, 2)
@@ -246,60 +261,54 @@ def charging_cycle(load,
                    rte,
                    lower_threshold):
 
-    dt = timestep / 60  # hours
+    dt = timestep / 60
+
+    charge_eff = np.sqrt(rte)
+    discharge_eff = np.sqrt(rte)
 
     soc = kwh
 
     battery_kw = []
     battery_kwh = []
 
-    charge_eff = np.sqrt(rte)
-    discharge_eff = np.sqrt(rte)
-
     for demand in load.values:
 
-        # DISCHARGE
         if demand > upper_threshold:
 
             power = min(demand - upper_threshold, kw)
 
-            energy_removed = power * dt / discharge_eff
+            energy_needed = power * dt / discharge_eff
 
-            actual_energy_removed = min(energy_removed, soc)
+            if energy_needed > soc:
 
-            soc -= actual_energy_removed
+                power = soc * discharge_eff / dt
+                energy_needed = soc
 
-            actual_power = (
-                actual_energy_removed
-                * discharge_eff
-                / dt
-            )
+            soc -= energy_needed
 
-            battery_kw.append(actual_power)
+            battery_kw.append(power)
 
-        # CHARGE
         elif demand < lower_threshold:
 
             power = min(lower_threshold - demand, kw)
 
             energy_added = power * dt * charge_eff
 
-            actual_energy_added = min(
-                energy_added,
-                kwh - soc
-            )
+            available_room = kwh - soc
 
-            soc += actual_energy_added
+            if energy_added > available_room:
 
-            actual_power = -(
-                actual_energy_added
-                / charge_eff
-                / dt
-            )
+                energy_added = available_room
+                power = (
+                    energy_added
+                    / charge_eff
+                    / dt
+                )
 
-            battery_kw.append(actual_power)
+            soc += energy_added
 
-        # IDLE
+            battery_kw.append(-power)
+
         else:
 
             battery_kw.append(0)
