@@ -183,39 +183,38 @@ def batt_size(load,
               start_charging_load):
 
     import numpy as np
-    import pandas as pd
 
     load = load * (1 + growth_rate) ** year
     dt = timestep / 60
 
-    discharge = (load - max_allowable_load).clip(lower=0)
-    charge = (start_charging_load - load).clip(lower=0)
+    battery_power = np.where(
+        load > max_allowable_load,
+        load - max_allowable_load,
+        np.where(
+            load < start_charging_load,
+            load - start_charging_load,
+            0
+        )
+    )
 
-    required_power = np.max(np.abs(discharge))
+    battery_power = np.array(battery_power)
 
-    def event_energy(series):
-        groups = [
-            g for _, g in series.groupby((series == 0).cumsum())
-        ]
-        return max((g.sum() * dt for g in groups), default=0)
+    required_power = np.max(np.abs(battery_power))
 
-    discharge_energy = event_energy(discharge)
-    charge_energy = event_energy(charge)
+    soc = np.cumsum(battery_power * dt)
 
-    net_energy = max(discharge_energy - charge_energy, 0)
+    required_energy = soc.max() - soc.min()
 
     degradation_factor = (1 - degradation) ** year
 
-    required_energy = net_energy
-
     if degradation_factor > 0:
-        required_energy = required_energy / degradation_factor
+        required_energy /= degradation_factor
 
     if dod > 0:
-        required_energy = required_energy / dod
+        required_energy /= dod
 
     if rte > 0:
-        required_energy = required_energy / rte
+        required_energy /= rte
 
     required_power_output = np.round(required_power / 1000, 2)
     required_energy_output = np.round(required_energy / 1000, 2)
@@ -279,7 +278,6 @@ def charging_cycle(load,
             battery_kw.append(-energy / dt / charge_eff)
 
         else:
-
             battery_kw.append(0)
 
         battery_kwh.append(soc)
