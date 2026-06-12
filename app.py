@@ -112,6 +112,7 @@ def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, d
     battery_need_lower = battery_need_lower.clip(upper=0)
 
     battery_need = battery_need_upper + battery_need_lower
+    print(battery_need)
     #degradation = degradation_profile(year)/100
     degradation = (1-degradation)**year
     
