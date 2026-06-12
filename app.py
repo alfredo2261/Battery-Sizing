@@ -185,63 +185,66 @@ def batt_size(load,
     load = load * (1 + growth_rate) ** year
     dt = timestep / 60
 
-    charge_eff = np.sqrt(rte)
-    discharge_eff = np.sqrt(rte)
+    battery_power = np.where(
+        load > max_allowable_load,
+        load - max_allowable_load,
+        np.where(
+            load < start_charging_load,
+            load - start_charging_load,
+            0
+        )
+    )
 
-    battery_power = []
-    soc = [0]
-
-    for demand in load.values:
-
-        if demand > max_allowable_load:
-
-            power = demand - max_allowable_load
-
-            battery_power.append(power)
-
-            soc.append(
-                soc[-1]
-                - power * dt / discharge_eff
-            )
-
-        elif demand < start_charging_load:
-
-            power = start_charging_load - demand
-
-            battery_power.append(-power)
-
-            soc.append(
-                soc[-1]
-                + power * dt * charge_eff
-            )
-
-        else:
-
-            battery_power.append(0)
-            soc.append(soc[-1])
-
-    battery_power = np.array(battery_power)
-    soc = np.array(soc)
+    battery_power = pd.Series(battery_power, index=load.index)
 
     required_power = np.max(np.abs(battery_power))
 
-    required_energy = soc.max() - soc.min()
+    # ---- CRITICAL FIX: bounded SOC simulation ----
+    charge_eff = np.sqrt(rte)
+    discharge_eff = np.sqrt(rte)
+
+    # initial guess (upper bound)
+    energy = (np.sum(np.abs(battery_power)) * dt) / rte
+    energy *= 2  # safe oversize start
+
+    for _ in range(20):
+
+        soc = energy * dod
+        soc_min = soc
+        soc_max = soc
+
+        soc_trace = [soc]
+
+        for p in battery_power:
+
+            if p > 0:  # discharge
+                soc -= (p * dt) / discharge_eff
+            elif p < 0:  # charge
+                soc += (-p * dt) * charge_eff
+
+            soc = min(max(soc, 0), energy * dod)
+
+            soc_trace.append(soc)
+
+        soc_trace = np.array(soc_trace)
+
+        required = soc_trace.max() - soc_trace.min()
+
+        if abs(required - soc) < 1e-3:
+            break
+
+        energy = required
 
     degradation_factor = (1 - degradation) ** year
 
-    required_energy = (
-        required_energy
-        / degradation_factor
-        / dod
-    )
+    required_energy = energy / degradation_factor / rte
 
     required_power_output = np.round(required_power / 1000, 2)
     required_energy_output = np.round(required_energy / 1000, 2)
 
     hours = (
         np.round(required_energy_output / required_power_output, 2)
-        if required_power_output > 0
-        else 0
+        if required_power_output > 0 else 0
     )
 
     output = (
@@ -251,6 +254,8 @@ def batt_size(load,
     )
 
     return required_power, required_energy, output
+
+
 
 
 def charging_cycle(load,
@@ -263,13 +268,13 @@ def charging_cycle(load,
 
     dt = timestep / 60
 
-    charge_eff = np.sqrt(rte)
-    discharge_eff = np.sqrt(rte)
-
     soc = kwh
 
     battery_kw = []
     battery_kwh = []
+
+    charge_eff = np.sqrt(rte)
+    discharge_eff = np.sqrt(rte)
 
     for demand in load.values:
 
@@ -277,40 +282,27 @@ def charging_cycle(load,
 
             power = min(demand - upper_threshold, kw)
 
-            energy_needed = power * dt / discharge_eff
+            energy = power * dt / discharge_eff
 
-            if energy_needed > soc:
+            energy = min(energy, soc)
 
-                power = soc * discharge_eff / dt
-                energy_needed = soc
+            soc -= energy
 
-            soc -= energy_needed
-
-            battery_kw.append(power)
+            battery_kw.append(energy * discharge_eff / dt)
 
         elif demand < lower_threshold:
 
             power = min(lower_threshold - demand, kw)
 
-            energy_added = power * dt * charge_eff
+            energy = power * dt * charge_eff
 
-            available_room = kwh - soc
+            energy = min(energy, kwh - soc)
 
-            if energy_added > available_room:
+            soc += energy
 
-                energy_added = available_room
-                power = (
-                    energy_added
-                    / charge_eff
-                    / dt
-                )
-
-            soc += energy_added
-
-            battery_kw.append(-power)
+            battery_kw.append(-(energy / charge_eff / dt))
 
         else:
-
             battery_kw.append(0)
 
         battery_kwh.append(soc)
