@@ -101,13 +101,17 @@ import matplotlib.dates as mdates
 #     return health[year]
 
 
-def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, degradation):
+def batt_size(load, max_allowable_load, year, dod, rte, timestep, growth_rate, degradation, start_charging_load):
     load = load*(1+growth_rate)**year
     timestep = timestep / 60
     
-    battery_need = load - max_allowable_load
-    
-    battery_need = battery_need.clip(lower=0)
+    battery_need_upper = load - max_allowable_load
+    battery_need_upper = battery_need_upper.clip(lower=0)
+
+    battery_need_lower = load - start_charging_load
+    battery_need_lower = battery_need_lower.clip(upper=0)
+
+    battery_need = battery_need_upper + battery_need_lower
     #degradation = degradation_profile(year)/100
     degradation = (1-degradation)**year
     
@@ -243,7 +247,7 @@ if load is not None:
 
     future_load = total_load*(1+growth_rate)**year
     
-    kw, kwh, output = batt_size(total_load, threshold, year, dod, rte, timestep, growth_rate, degradation)
+    kw, kwh, output = batt_size(total_load, threshold, year, dod, rte, timestep, growth_rate, degradation, lower_threshold)
     output_kw, output_kwh = charging_cycle(future_load, kw, kwh, threshold, timestep, rte, lower_threshold)
     output_kw_0, output_kwh_0 = charging_cycle(total_load, kw, kwh, threshold, timestep, rte, lower_threshold)
     
