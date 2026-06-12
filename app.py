@@ -184,49 +184,69 @@ def batt_size(load,
 
     import numpy as np
 
+    # -----------------------------
+    # PREP
+    # -----------------------------
     load = load * (1 + growth_rate) ** year
     dt = timestep / 60  # hours
 
     # -----------------------------
-    # CORRECT DISPATCH (SIGNAL ONLY)
+    # CONTROL POLICY (POWER SIGNAL)
+    # + discharge above upper limit
+    # - charge below lower limit
     # -----------------------------
-    battery_power = np.where(
+    p = np.where(
         load > max_allowable_load,
-        load - max_allowable_load,                 # discharge (+)
+        load - max_allowable_load,
         np.where(
             load < start_charging_load,
-            load - start_charging_load,             # charge (-)
+            load - start_charging_load,
             0
         )
     ).astype(float)
 
-    required_power = np.max(np.abs(battery_power))
-
-    # ---------------------------------------------------
-    # FIX: ENERGY MUST BE BASED ON "RUNNING ENERGY BUFFER"
-    # NOT RAW CUMULATIVE SUM (THIS WAS THE BUG CAUSING
-    # THOUSANDS OF HOURS)
-    # ---------------------------------------------------
-
-    energy = 0.0
-    max_energy = 0.0
-    min_energy = 0.0
-
-    for p in battery_power:
-        energy += p * dt
-        max_energy = max(max_energy, energy)
-        min_energy = min(min_energy, energy)
-
-    required_energy = max_energy - min_energy
+    # power sizing (fully consistent with dispatch)
+    required_power = np.max(np.abs(p))
 
     # -----------------------------
-    # DERATING (APPLIED ONCE ONLY)
+    # EFFICIENCY MODEL (split form)
+    # -----------------------------
+    charge_eff = np.sqrt(rte)
+    discharge_eff = np.sqrt(rte)
+
+    # -----------------------------
+    # SOC SIMULATION (BOUNDARY CORRECT)
+    # -----------------------------
+    soc = 0.0
+    soc_max = 0.0
+    soc_min = 0.0
+
+    for pi in p:
+        if pi > 0:
+            soc -= (pi * dt) / discharge_eff
+        elif pi < 0:
+            soc += (-pi * dt) * charge_eff
+
+        soc_max = max(soc_max, soc)
+        soc_min = min(soc_min, soc)
+
+    raw_energy = soc_max - soc_min
+
+    # -----------------------------
+    # DERATING
     # -----------------------------
     degradation_factor = (1 - degradation) ** year
 
-    required_energy = required_energy / max(degradation_factor, 1e-9)
-    required_energy = required_energy / max(dod, 1e-9)
-    required_energy = required_energy / max(rte, 1e-9)
+    required_energy = raw_energy
+
+    if degradation_factor > 0:
+        required_energy /= degradation_factor
+
+    if dod > 0:
+        required_energy /= dod
+
+    if rte > 0:
+        required_energy /= rte
 
     # -----------------------------
     # OUTPUT
@@ -257,37 +277,33 @@ def charging_cycle(load,
 
     dt = timestep / 60
 
+    charge_eff = np.sqrt(rte)
+    discharge_eff = np.sqrt(rte)
+
     soc = kwh
 
     battery_kw = []
     battery_kwh = []
 
-    charge_eff = np.sqrt(rte)
-    discharge_eff = np.sqrt(rte)
+    for d in load.values:
 
-    for demand in load.values:
+        if d > upper_threshold:
+            p = min(d - upper_threshold, kw)
 
-        if demand > upper_threshold:
+            e = p * dt / discharge_eff
+            e = min(e, soc)
 
-            power = min(demand - upper_threshold, kw)
+            soc -= e
+            battery_kw.append(e * discharge_eff / dt)
 
-            energy = power * dt / discharge_eff
-            energy = min(energy, soc)
+        elif d < lower_threshold:
+            p = min(lower_threshold - d, kw)
 
-            soc -= energy
+            e = p * dt * charge_eff
+            e = min(e, kwh - soc)
 
-            battery_kw.append(energy * discharge_eff / dt)
-
-        elif demand < lower_threshold:
-
-            power = min(lower_threshold - demand, kw)
-
-            energy = power * dt * charge_eff
-            energy = min(energy, kwh - soc)
-
-            soc += energy
-
-            battery_kw.append(-energy / dt / charge_eff)
+            soc += e
+            battery_kw.append(-e / dt / charge_eff)
 
         else:
             battery_kw.append(0)
